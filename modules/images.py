@@ -17,7 +17,7 @@ import string
 import json
 import hashlib
 
-from modules import sd_samplers, shared, script_callbacks, errors
+from modules import devices, sd_samplers, shared, script_callbacks, errors
 from modules.paths_internal import roboto_ttf_file
 from modules.shared import opts
 
@@ -275,7 +275,8 @@ def resize_image(resize_mode, im, width, height, upscaler_name=None):
             else:
                 upscaler = upscalers[0]
 
-            im = upscaler.scaler.upscale(im, scale, upscaler.data_path)
+            with devices.without_autocast():
+                im = upscaler.scaler.upscale(im, scale, upscaler.data_path)
 
         if im.width != w or im.height != h:
             im = im.resize((w, h), resample=LANCZOS)
