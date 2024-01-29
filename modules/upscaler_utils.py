@@ -1,38 +1,14 @@
 import logging
 from typing import Callable
 
-import numpy as np
 import torch
 import tqdm
 from PIL import Image
+import torchvision.transforms.v2 as T
 
 from modules import images, shared, torch_utils
 
 logger = logging.getLogger(__name__)
-
-
-def pil_image_to_torch_bgr(img: Image.Image) -> torch.Tensor:
-    img = np.array(img.convert("RGB"))
-    img = img[:, :, ::-1]  # flip RGB to BGR
-    img = np.transpose(img, (2, 0, 1))  # HWC to CHW
-    img = np.ascontiguousarray(img) / 255  # Rescale to [0, 1]
-    return torch.from_numpy(img)
-
-
-def torch_bgr_to_pil_image(tensor: torch.Tensor) -> Image.Image:
-    if tensor.ndim == 4:
-        # If we're given a tensor with a batch dimension, squeeze it out
-        # (but only if it's a batch of size 1).
-        if tensor.shape[0] != 1:
-            raise ValueError(f"{tensor.shape} does not describe a BCHW tensor")
-        tensor = tensor.squeeze(0)
-    assert tensor.ndim == 3, f"{tensor.shape} does not describe a CHW tensor"
-    # TODO: is `tensor.float().cpu()...numpy()` the most efficient idiom?
-    arr = tensor.float().cpu().clamp_(0, 1).numpy()  # clamp
-    arr = 255.0 * np.moveaxis(arr, 0, 2)  # CHW to HWC, rescale
-    arr = arr.round().astype(np.uint8)
-    arr = arr[:, :, ::-1]  # flip BGR to RGB
-    return Image.fromarray(arr, "RGB")
 
 
 def upscale_pil_patch(model, img: Image.Image) -> Image.Image:
@@ -42,9 +18,10 @@ def upscale_pil_patch(model, img: Image.Image) -> Image.Image:
     param = torch_utils.get_param(model)
 
     with torch.no_grad():
-        tensor = pil_image_to_torch_bgr(img).unsqueeze(0)  # add batch dimension
-        tensor = tensor.to(device=param.device, dtype=param.dtype)
-        return torch_bgr_to_pil_image(model(tensor))
+        tensor = T.PILToTensor()(img)
+        tensor = T.ToDtype(torch.float32, scale=True)(tensor)
+        tensor = tensor.clamp_(0.0, 1.0).unsqueeze(0).to(device=param.device, dtype=param.dtype)
+        return T.ToPILImage(mode="RGB")(model(tensor).squeeze(0).clamp_(0.0, 1.0))
 
 
 def upscale_with_model(
@@ -174,7 +151,9 @@ def upscale_2(
     Convenience wrapper around `tiled_upscale_2` that handles PIL images.
     """
     param = torch_utils.get_param(model)
-    tensor = pil_image_to_torch_bgr(img).to(dtype=param.dtype).unsqueeze(0)  # add batch dimension
+    tensor = T.PILToTensor()(img)
+    tensor = T.ToDtype(torch.float32, scale=True)(tensor)
+    tensor = tensor.clamp_(0.0, 1.0).to(dtype=param.dtype).unsqueeze(0)
 
     with torch.no_grad():
         output = tiled_upscale_2(
@@ -186,4 +165,5 @@ def upscale_2(
             desc=desc,
             device=param.device,
         )
-    return torch_bgr_to_pil_image(output)
+    return T.ToPILImage(mode="RGB")(output.squeeze(0).clamp_(0.0, 1.0))
+
