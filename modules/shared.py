@@ -47,7 +47,7 @@ settings_components = None
 
 tab_names = []
 
-latent_upscale_default_mode = "Latent"
+latent_upscale_default_mode = "Latent (nearest-exact)"
 latent_upscale_modes = {
     "Latent": {"mode": "bilinear", "antialias": False},
     "Latent (antialiased)": {"mode": "bilinear", "antialias": True},

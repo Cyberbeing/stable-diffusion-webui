@@ -1228,7 +1228,7 @@ class StableDiffusionProcessingTxt2Img(StableDiffusionProcessing):
             if tuple(self.hr_negative_prompt) != tuple(self.negative_prompt):
                 self.extra_generation_params["Hires negative prompt"] = self.hr_negative_prompt
 
-            self.latent_scale_mode = shared.latent_upscale_modes.get(self.hr_upscaler, None) if self.hr_upscaler is not None else shared.latent_upscale_modes.get(shared.latent_upscale_default_mode, "nearest")
+            self.latent_scale_mode = shared.latent_upscale_modes.get(self.hr_upscaler, None) if self.hr_upscaler is not None else shared.latent_upscale_modes.get(shared.latent_upscale_default_mode, "nearest-exact")
             if self.enable_hr and self.latent_scale_mode is None:
                 if not any(x.name == self.hr_upscaler for x in shared.sd_upscalers):
                     raise Exception(f"could not find upscaler named {self.hr_upscaler}")
@@ -1654,7 +1654,7 @@ class StableDiffusionProcessingImg2Img(StableDiffusionProcessing):
         devices.torch_gc()
 
         if self.resize_mode == 3:
-            self.init_latent = torch.nn.functional.interpolate(self.init_latent, size=(self.height // opt_f, self.width // opt_f), mode="bilinear")
+            self.init_latent = torch.nn.functional.interpolate(self.init_latent, size=(self.height // opt_f, self.width // opt_f), mode="nearest-exact", antialias=False)
 
         if image_mask is not None:
             init_mask = latent_mask

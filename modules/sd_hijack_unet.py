@@ -24,7 +24,7 @@ class TorchHijackForUnet:
         if len(tensors) == 2:
             a, b = tensors
             if a.shape[-2:] != b.shape[-2:]:
-                a = torch.nn.functional.interpolate(a, b.shape[-2:], mode="nearest")
+                a = torch.nn.functional.interpolate(a, b.shape[-2:], mode="nearest-exact")
 
             tensors = (a, b)
 
